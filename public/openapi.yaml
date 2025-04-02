@@ -1,31 +1,36 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: SketchShifter API
-  description: SketchShifterアプリケーションのREST API
+  title: パンフレットアプリ API
+  description: マップをインタラクティブな電子パンフレットに変換するアプリのAPI仕様
   version: 1.0.0
+  
 servers:
-  - url: https://api.serendicode-sub.click
-    description: 本番環境API
+  - url: https://api.pamfree.com
+    description: 本番環境
+  - url: http://localhost:8080
+    description: 開発環境
 
 tags:
   - name: 認証
-    description: ユーザー認証に関するエンドポイント
-  - name: ユーザー管理
-    description: ユーザープロフィール管理に関するエンドポイント
-  - name: 作品管理
-    description: 作品の投稿、取得、更新、削除に関するエンドポイント
-  - name: いいね管理
-    description: 作品へのいいね操作に関するエンドポイント
-  - name: コメント管理
-    description: 作品へのコメント操作に関するエンドポイント
-  - name: タグ管理
-    description: タグ一覧取得に関するエンドポイント
-  - name: システム
-    description: システム状態確認に関するエンドポイント
+    description: 認証に関する操作
+  - name: マップ
+    description: マップに関する操作
+  - name: フロア
+    description: フロアに関する操作
+  - name: ピン
+    description: ピンに関する操作
+  - name: 公開編集
+    description: 公開編集に関する操作
+  - name: ビューワー
+    description: ビューワーに関する操作
+  - name: Cloudinary
+    description: Cloudinaryに関する操作
+  - name: 管理者
+    description: 管理者に関する操作
 
 components:
   securitySchemes:
-    BearerAuth:
+    bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
@@ -35,122 +40,108 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
+          format: uuid
         email:
           type: string
+          format: email
         name:
           type: string
-        nickname:
+        role:
           type: string
-        bio:
-          type: string
+          enum: [user, admin]
         created_at:
           type: string
           format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    Tag:
+      required:
+        - id
+        - email
+        - name
+        - role
+    
+    Map:
       type: object
       properties:
         id:
-          type: integer
-        name:
           type: string
-        created_at:
+          format: uuid
+        map_id:
           type: string
-          format: date-time
-
-    Work:
-      type: object
-      properties:
-        id:
-          type: integer
         title:
           type: string
         description:
           type: string
-        file_type:
-          type: string
-        file_name:
-          type: string
-        file_url:
-          type: string
-        thumbnail_type:
-          type: string
-        thumbnail_url:
-          type: string
-        code_shared:
-          type: boolean
-        code_content:
-          type: string
-        views:
-          type: integer
         user_id:
-          type: integer
-        is_guest:
-          type: boolean
-        guest_nickname:
           type: string
+          format: uuid
+        is_publicly_editable:
+          type: boolean
+          default: false
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
-        user:
-          $ref: '#/components/schemas/User'
-        tags:
-          type: array
-          items:
-            $ref: '#/components/schemas/Tag'
-        likes_count:
-          type: integer
-        comments_count:
-          type: integer
-
-    ProcessingWork:
+      required:
+        - id
+        - map_id
+        - title
+        - user_id
+    
+    Floor:
       type: object
       properties:
         id:
+          type: string
+          format: uuid
+        map_id:
+          type: string
+          format: uuid
+        floor_number:
           type: integer
-        work_id:
-          type: integer
-        original_name:
+        name:
           type: string
-        pde_content:
+        image_url:
           type: string
-        js_content:
-          type: string
-        canvas_id:
-          type: string
-        status:
-          type: string
-          enum: [pending, processing, processed, error]
-        error_message:
-          type: string
+          format: uri
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
-
-    Comment:
+      required:
+        - id
+        - map_id
+        - floor_number
+        - name
+    
+    Pin:
       type: object
       properties:
         id:
-          type: integer
-        content:
           type: string
-        work_id:
-          type: integer
-        user_id:
-          type: integer
-        is_guest:
-          type: boolean
-        guest_nickname:
+          format: uuid
+        floor_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        x_position:
+          type: number
+          format: float
+        y_position:
+          type: number
+          format: float
+        image_url:
+          type: string
+          format: uri
+        editor_id:
+          type: string
+        editor_nickname:
           type: string
         created_at:
           type: string
@@ -158,83 +149,249 @@ components:
         updated_at:
           type: string
           format: date-time
-        user:
-          $ref: '#/components/schemas/User'
-
-    Like:
+      required:
+        - id
+        - floor_id
+        - title
+        - x_position
+        - y_position
+    
+    PublicEditor:
       type: object
       properties:
-        user_id:
+        editorId:
+          type: string
+        nickname:
+          type: string
+        token:
+          type: string
+        mapId:
+          type: string
+        verified:
+          type: boolean
+      required:
+        - editorId
+        - nickname
+        - verified
+    
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required:
+        - email
+        - password
+    
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - token
+        - user
+    
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        name:
+          type: string
+      required:
+        - email
+        - password
+        - name
+    
+    MapCreate:
+      type: object
+      properties:
+        map_id:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+        title:
+          type: string
+        description:
+          type: string
+        is_publicly_editable:
+          type: boolean
+          default: false
+      required:
+        - map_id
+        - title
+    
+    MapUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        is_publicly_editable:
+          type: boolean
+      minProperties: 1
+    
+    FloorCreate:
+      type: object
+      properties:
+        floor_number:
           type: integer
-        work_id:
+          minimum: 1
+        name:
+          type: string
+      required:
+        - floor_number
+        - name
+    
+    FloorUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        image_url:
+          type: string
+          format: uri
+      minProperties: 1
+    
+    PinCreate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        x_position:
+          type: number
+          format: float
+        y_position:
+          type: number
+          format: float
+        image_url:
+          type: string
+          format: uri
+        editor_id:
+          type: string
+        editor_nickname:
+          type: string
+      required:
+        - title
+        - x_position
+        - y_position
+    
+    PinUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        image_url:
+          type: string
+          format: uri
+      minProperties: 1
+    
+    PublicEditorRegister:
+      type: object
+      properties:
+        mapId:
+          type: string
+        nickname:
+          type: string
+      required:
+        - mapId
+        - nickname
+    
+    PublicEditorVerify:
+      type: object
+      properties:
+        editorId:
+          type: string
+        token:
+          type: string
+      required:
+        - editorId
+        - token
+    
+    CloudinaryUploadResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        public_id:
+          type: string
+        format:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+        bytes:
           type: integer
         created_at:
           type: string
           format: date-time
-
+      required:
+        - url
+        - public_id
+    
     Error:
       type: object
       properties:
         error:
           type: string
-          
-    HealthStatus:
+      required:
+        - error
+    
+    Success:
       type: object
       properties:
-        status:
+        message:
           type: string
-        uptime:
-          type: string
-        timestamp:
-          type: string
-        version:
-          type: string
+      required:
+        - message
+    
+    ViewerData:
+      type: object
+      properties:
+        map:
+          $ref: '#/components/schemas/Map'
+        floors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Floor'
+        pins:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pin'
+      required:
+        - map
+        - floors
+        - pins
 
 paths:
-  # システム
-  /health:
-    get:
-      tags:
-        - システム
-      summary: ヘルスチェック
-      description: APIの稼働状態を確認します
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthStatus'
-
-  # 認証
-  /register:
+  /api/auth/register:
     post:
       tags:
-        - 認証
+        - 認証    
       summary: ユーザー登録
-      description: 新しいユーザーを登録します
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - email
-                - password
-                - name
-                - nickname
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  minLength: 6
-                name:
-                  type: string
-                nickname:
-                  type: string
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
           description: 登録成功
@@ -243,101 +400,64 @@ paths:
               schema:
                 type: object
                 properties:
+                  message:
+                    type: string
                   user:
                     $ref: '#/components/schemas/User'
-                  token:
-                    type: string
         '400':
-          description: 無効なリクエスト
+          description: 入力エラー
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '409':
-          description: メールアドレスが既に使用されています
+        '500':
+          description: サーバーエラー
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /login:
+  
+  /api/auth/login:
     post:
       tags:
-        - 認証
+        - 認証    
       summary: ログイン
-      description: 既存ユーザーとしてログインします
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - email
-                - password
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
           description: ログイン成功
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  user:
-                    $ref: '#/components/schemas/User'
-                  token:
-                    type: string
+                $ref: '#/components/schemas/LoginResponse'
         '401':
           description: 認証失敗
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # ユーザー管理
-  /users/me:
-    get:
-      tags:
-        - ユーザー管理
-      summary: 自分のプロフィール取得
-      description: ログインユーザーの情報を取得します
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          description: 認証が必要です
+        '500':
+          description: サーバーエラー
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /users/{id}:
+  
+  /api/auth/me:
     get:
       tags:
-        - ユーザー管理
-      summary: ユーザー情報取得
-      description: 指定されたIDのユーザー情報を取得します
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+        - 認証    
+      summary: 現在のユーザー情報を取得
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: 成功
+          description: ユーザー情報
           content:
             application/json:
               schema:
@@ -345,312 +465,37 @@ paths:
                 properties:
                   user:
                     $ref: '#/components/schemas/User'
-        '404':
-          description: ユーザーが見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /users/my-works:
-    get:
-      tags:
-        - ユーザー管理
-        - 作品管理
-      summary: 自分の作品一覧取得
-      description: ログインユーザーの作品一覧を取得します
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 20
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  works:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Work'
-                  total:
-                    type: integer
-                  pages:
-                    type: integer
-                  page:
-                    type: integer
         '401':
-          description: 認証が必要です
+          description: 認証が必要
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /users/{id}/works:
-    get:
-      tags:
-        - ユーザー管理
-        - 作品管理
-      summary: ユーザーの作品一覧取得
-      description: 指定されたユーザーの作品一覧を取得します
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 20
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  works:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Work'
-                  total:
-                    type: integer
-                  pages:
-                    type: integer
-                  page:
-                    type: integer
-        '404':
-          description: ユーザーが見つかりません
+        '500':
+          description: サーバーエラー
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # 作品管理
-  /works:
-    get:
+  
+  /api/account/update-profile:
+    patch:
       tags:
-        - 作品管理
-      summary: 作品一覧取得
-      description: 作品一覧を検索条件に基づいて取得します
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 20
-        - name: search
-          in: query
-          schema:
-            type: string
-        - name: tag
-          in: query
-          schema:
-            type: string
-        - name: user_id
-          in: query
-          schema:
-            type: integer
-        - name: sort
-          in: query
-          schema:
-            type: string
-            enum: [newest, popular, likes]
-            default: newest
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  works:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Work'
-                  total:
-                    type: integer
-                  pages:
-                    type: integer
-                  page:
-                    type: integer
-
-    post:
-      tags:
-        - 作品管理
-      summary: 作品投稿
-      description: 新しい作品を投稿します
+        - 認証    
+      summary: プロフィール更新
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               type: object
+              properties:
+                name:
+                  type: string
               required:
-                - title
-              properties:
-                title:
-                  type: string
-                description:
-                  type: string
-                file:
-                  type: string
-                  format: binary
-                file_url:
-                  type: string
-                file_public_id:
-                  type: string
-                file_type:
-                  type: string
-                file_name:
-                  type: string
-                thumbnail:
-                  type: string
-                  format: binary
-                thumbnail_url:
-                  type: string
-                thumbnail_public_id:
-                  type: string
-                thumbnail_type:
-                  type: string
-                code_shared:
-                  type: boolean
-                code_content:
-                  type: string
-                tags:
-                  type: string
-                is_guest:
-                  type: boolean
-                guest_nickname:
-                  type: string
-      responses:
-        '201':
-          description: 投稿成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  work:
-                    $ref: '#/components/schemas/Work'
-        '400':
-          description: 無効なリクエスト
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: 認証が必要です
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /works/{id}:
-    get:
-      tags:
-        - 作品管理
-      summary: 作品詳細取得
-      description: 指定されたIDの作品詳細を取得します
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  work:
-                    $ref: '#/components/schemas/Work'
-                  processing_work:
-                    $ref: '#/components/schemas/ProcessingWork'
-        '404':
-          description: 作品が見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    put:
-      tags:
-        - 作品管理
-      summary: 作品更新
-      description: 指定されたIDの作品を更新します
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                description:
-                  type: string
-                file:
-                  type: string
-                  format: binary
-                file_url:
-                  type: string
-                file_public_id:
-                  type: string
-                file_type:
-                  type: string
-                file_name:
-                  type: string
-                thumbnail_url:
-                  type: string
-                thumbnail_public_id:
-                  type: string
-                thumbnail_type:
-                  type: string
-                code_shared:
-                  type: boolean
-                code_content:
-                  type: string
-                tags:
-                  type: string
+                - name
       responses:
         '200':
           description: 更新成功
@@ -659,335 +504,1421 @@ paths:
               schema:
                 type: object
                 properties:
-                  work:
-                    $ref: '#/components/schemas/Work'
-        '400':
-          description: 無効なリクエスト
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
         '401':
-          description: 認証が必要です
+          description: 認証が必要
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '403':
-          description: この作品を更新する権限がありません
+        '500':
+          description: サーバーエラー
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: 作品が見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    delete:
-      tags:
-        - 作品管理
-      summary: 作品削除
-      description: 指定されたIDの作品を削除します
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '204':
-          description: 削除成功
-        '401':
-          description: 認証が必要です
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: この作品を削除する権限がありません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: 作品が見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /works/{id}/file:
-    get:
-      tags:
-        - 作品管理
-      summary: 作品ファイル取得
-      description: 指定された作品のファイルデータを取得します
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/octet-stream: {}
-        '302':
-          description: Cloudinaryへのリダイレクト
-        '404':
-          description: ファイルが見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /works/{id}/thumbnail:
-    get:
-      tags:
-        - 作品管理
-      summary: 作品サムネイル取得
-      description: 指定された作品のサムネイルを取得します
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: 成功
-          content:
-            image/*: {}
-        '302':
-          description: Cloudinaryへのリダイレクト
-        '404':
-          description: サムネイルが見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # いいね管理
-  /works/{id}/like:
+  
+  /api/account/change-password:
     post:
       tags:
-        - いいね管理
-      summary: いいね追加
-      description: 指定された作品にいいねを追加します
+        - 認証    
+      summary: パスワード変更
       security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  likes_count:
-                    type: integer
-        '400':
-          description: 既にいいねしています
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: 認証が必要です
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: 作品が見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /works/{id}/unlike:
-    post:
-      tags:
-        - いいね管理
-      summary: いいね削除
-      description: 指定された作品のいいねを削除します
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  likes_count:
-                    type: integer
-        '400':
-          description: いいねしていません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: 認証が必要です
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: 作品が見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # コメント管理
-  /works/{id}/comments:
-    get:
-      tags:
-        - コメント管理
-      summary: コメント一覧取得
-      description: 指定された作品のコメント一覧を取得します
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 20
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  comments:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Comment'
-                  total:
-                    type: integer
-                  pages:
-                    type: integer
-                  page:
-                    type: integer
-        '404':
-          description: 作品が見つかりません
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    post:
-      tags:
-        - コメント管理
-      summary: コメント投稿
-      description: 指定された作品にコメントを投稿します
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - content
               properties:
-                content:
+                currentPassword:
                   type: string
-                is_guest:
-                  type: boolean
-                guest_nickname:
+                newPassword:
                   type: string
+                  minLength: 6
+              required:
+                - currentPassword
+                - newPassword
       responses:
-        '201':
-          description: 投稿成功
+        '200':
+          description: パスワード変更成功
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  comment:
-                    $ref: '#/components/schemas/Comment'
+                $ref: '#/components/schemas/Success'
         '400':
-          description: 無効なリクエスト
+          description: 現在のパスワードが正しくない
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '401':
-          description: 認証が必要です
+          description: 認証が必要
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: 作品が見つかりません
+        '500':
+          description: サーバーエラー
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # タグ管理
-  /tags:
+  
+  /api/maps:
     get:
       tags:
-        - タグ管理
-      summary: タグ一覧取得
-      description: タグ一覧を検索条件に基づいて取得します
-      parameters:
-        - name: search
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
+        - マップ
+      summary: ユーザーのマップ一覧を取得
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: 成功
+          description: マップ一覧
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Tag'
+                  $ref: '#/components/schemas/Map'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - マップ
+      summary: 新しいマップを作成
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MapCreate'
+      responses:
+        '201':
+          description: マップ作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Map'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/maps/{mapId}:
+    parameters:
+      - name: mapId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    get:
+      tags:
+        - マップ
+      summary: マップ情報を取得
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: マップ情報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Map'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    patch:
+      tags:
+        - マップ
+      summary: マップ情報を更新
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MapUpdate'
+      responses:
+        '200':
+          description: マップ更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Map'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - マップ
+      summary: マップを削除
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: マップ削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/maps/by-map-id/{mapId}:
+    parameters:
+      - name: mapId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    get:
+      tags:
+        - マップ
+      summary: map_idからマップ情報を取得
+      responses:
+        '200':
+          description: マップ情報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Map'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - マップ
+      summary: map_idからマップを削除
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: マップ削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/maps/{mapId}/floors:
+    parameters:
+      - name: mapId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    get:
+      tags:
+        - フロア
+      summary: マップに属するフロア一覧を取得
+      responses:
+        '200':
+          description: フロア一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Floor'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - フロア
+      summary: 新しいフロアを作成
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FloorCreate'
+      responses:
+        '201':
+          description: フロア作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Floor'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/floors/{floorId}:
+    parameters:
+      - name: floorId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    get:
+      tags:
+        - フロア
+      summary: フロア情報を取得
+      responses:
+        '200':
+          description: フロア情報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Floor'
+        '404':
+          description: フロアが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    patch:
+      tags:
+        - フロア
+      summary: フロア情報を更新
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FloorUpdate'
+      responses:
+        '200':
+          description: フロア更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Floor'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: フロアが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - フロア
+      summary: フロアを削除
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: フロア削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: フロアが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/floors/{floorId}/image:
+    parameters:
+      - name: floorId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    post:
+      tags:
+        - フロア
+      summary: フロア画像をアップロード
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image_url:
+                  type: string
+                  format: uri
+              required:
+                - image_url
+      responses:
+        '200':
+          description: 画像アップロード成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Floor'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: フロアが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/floors/{floorId}/pins:
+    parameters:
+      - name: floorId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    get:
+      tags:
+        - フロア
+      summary: フロアに属するピン一覧を取得
+      responses:
+        '200':
+          description: ピン一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pin'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - フロア
+      summary: 新しいピンを作成
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinCreate'
+      responses:
+        '201':
+          description: ピン作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pin'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: フロアが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/pins/{pinId}:
+    parameters:
+      - name: pinId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    get:
+      tags:
+        - ピン
+      summary: ピン情報を取得
+      responses:
+        '200':
+          description: ピン情報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pin'
+        '404':
+          description: ピンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    patch:
+      tags:
+        - ピン
+      summary: ピン情報を更新
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinUpdate'
+      responses:
+        '200':
+          description: ピン更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pin'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ピンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - ピン
+      summary: ピンを削除
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ピン削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ピンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/pins/{pinId}/image:
+    parameters:
+      - name: pinId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    post:
+      tags:
+        - ピン
+      summary: ピン画像をアップロード
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image_url:
+                  type: string
+                  format: uri
+              required:
+                - image_url
+      responses:
+        '200':
+          description: 画像アップロード成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pin'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ピンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/public-edit/register:
+    post:
+      tags:
+        - 公開編集
+      summary: 公開編集者を登録
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicEditorRegister'
+      responses:
+        '201':
+          description: 公開編集者登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEditor'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 公開編集が許可されていない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/public-edit/verify:
+    post:
+      tags:
+        - 公開編集
+      summary: 公開編集者トークンを検証
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicEditorVerify'
+      responses:
+        '200':
+          description: トークン検証成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEditor'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: トークンが無効
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  verified:
+                    type: boolean
+                    enum: [false]
+                required:
+                  - error
+                  - verified
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/public-edit/pins:
+    post:
+      tags:
+        - 公開編集
+      summary: 公開編集でピンを作成
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                floorId:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                description:
+                  type: string
+                x_position:
+                  type: number
+                  format: float
+                y_position:
+                  type: number
+                  format: float
+                editorId:
+                  type: string
+                editorNickname:
+                  type: string
+                image_url:
+                  type: string
+                  format: uri
+              required:
+                - floorId
+                - title
+                - x_position
+                - y_position
+                - editorId
+                - editorNickname
+      responses:
+        '201':
+          description: ピン作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pin'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 編集権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 公開編集が許可されていない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: フロアが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/public-edit/pins/{pinId}:
+    parameters:
+      - name: pinId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    patch:
+      tags:
+        - 公開編集
+      summary: 公開編集でピンを更新
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                editorId:
+                  type: string
+              required:
+                - title
+                - editorId
+      responses:
+        '200':
+          description: ピン更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pin'
+        '400':
+          description: 入力エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 編集権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 公開編集が許可されていない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ピンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - 公開編集
+      summary: 公開編集でピンを削除
+      parameters:
+        - name: editorId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ピン削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: 編集者IDが必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 編集権限がない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 公開編集が許可されていない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ピンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/viewer/{mapId}:
+    parameters:
+      - name: mapId
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    get:
+      tags:
+        - ビューワー
+      summary: マップデータを取得（閲覧用）
+      responses:
+        '200':
+          description: マップデータ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViewerData'
+        '400':
+          description: マップIDが必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: マップが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/cloudinary/upload:
+    post:
+      tags:
+        - Cloudinary
+      summary: Cloudinaryに画像をアップロード
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                folder:
+                  type: string
+              required:
+                - image
+      responses:
+        '200':
+          description: 画像アップロード成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudinaryUploadResponse'
+        '400':
+          description: 画像ファイルが必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/cloudinary/delete:
+    post:
+      tags:
+        - Cloudinary
+      summary: Cloudinaryから画像を削除
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                publicId:
+                  type: string
+              required:
+                - publicId
+      responses:
+        '200':
+          description: 画像削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: 公開IDが必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/admin/users:
+    get:
+      tags:
+        - 管理者
+      summary: すべてのユーザーを取得
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ユーザー一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 管理者権限が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /api/admin/users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    
+    patch:
+      tags:
+        - 管理者
+      summary: ユーザー情報を更新（管理者用）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum: [user, admin]
+              required:
+                - role
+      responses:
+        '200':
+          description: ユーザー更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: 無効な役割または自分自身の役割変更
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 管理者権限が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ユーザーが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - 管理者
+      summary: ユーザーを削除（管理者用）
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ユーザー削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: 自分自身の削除
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 認証が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 管理者権限が必要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ユーザーが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

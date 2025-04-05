@@ -4,7 +4,7 @@ info:
   description: 位置情報付きマップを作成・編集するためのAPI
   version: 1.0.0
 servers:
-  - url: /api
+  - url: https://api.pamfree.com/api
     description: APIベースパス
 
 tags:
